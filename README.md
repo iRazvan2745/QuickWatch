@@ -1,8 +1,8 @@
 # StayUp-frontend
 
-This is a [Next.js](https://nextjs.org) project for the StayUp application frontend.
+This is a [Next.js](https://nextjs.org) project for the QuickWatch application frontend.
 
-Backend repository: [QuickWatch-backend](https://github.com/StayUp-org/StayUp-backend)
+Backend repository: [QuickWatch-backend](https://github.com/iRazvan2745/QuickWatch-backend)
 ## Getting Started
 
 To run the development server:
