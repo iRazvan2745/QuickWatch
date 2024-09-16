@@ -1,4 +1,4 @@
-# StayUp-frontend
+# QuickWatch-frontend
 
 This is a [Next.js](https://nextjs.org) project for the QuickWatch application frontend.
 
