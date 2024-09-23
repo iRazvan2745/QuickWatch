@@ -1,8 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Globe, Search, RefreshCw } from "lucide-react"
+import { Globe } from "lucide-react"
+import { Badge } from '@/components/ui/badge' // Utilizing Shadcn UI Badge
+import { Switch } from '@/components/ui/switch' // Utilizing Radix UI Switch
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface Service {
   name: string
@@ -12,141 +15,83 @@ interface Service {
   uptimeHistory: { date: string; isUp: boolean }[]
 }
 
-export default function Component({ initialServices }: { initialServices: Service[] }) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [isRefreshing, setIsRefreshing] = useState(false)
+export default function MonitoringDashboard({ initialServices }: { initialServices: Service[] }) {
   const [services, setServices] = useState<Service[]>(initialServices)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [isToggled, setIsToggled] = useState(false)
 
   useEffect(() => {
-    // Dark/light mode functionality removed
-  }, [])
-
-  useEffect(() => {
-    const fetchServices = async () => {
+    const interval = setInterval(async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api/monitor`)
-        const data = await response.json()
-        const mappedServices = data.map((item: { url: string; status: boolean; last_checked: string }) => ({
-          name: item.url,
-          icon: <Globe className="w-5 h-5" />, // Use a generic icon for all services
-          status: item.status ? "Operational" : "Down",
-          uptime: item.status ? 100 : 0, // Simplified uptime calculation 
-          uptimeHistory: [{ date: item.last_checked, isUp: item.status }]
-        }))
-        setServices(mappedServices)
+        const response = await fetch("/api/monitor")
+        const data: Service[] = await response.json()
+        setServices(data)
       } catch (error) {
         console.error("Error fetching services:", error)
       }
-    }
+    }, 5000)
 
-    fetchServices()
-
-    const intervalId = setInterval(fetchServices, 5000) // Fetch services every 5 seconds
-
-    return () => clearInterval(intervalId) // Cleanup interval on component unmount
+    return () => clearInterval(interval)
   }, [])
 
-  const filteredServices = services?.filter((service) =>
+  const filteredServices = services.filter(service =>
     service.name.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || []
-
-  const handleRefresh = () => {
-    setIsRefreshing(true)
-    setTimeout(() => setIsRefreshing(false), 1000)
-  }
-
-  const getStatusColor = (status: Service["status"]) => {
-    switch (status) {
-      case "Operational":
-        return "text-green-500"
-      case "Degraded":
-        return "text-yellow-500"
-      case "Down":
-        return "text-red-500"
-      default:
-        return "text-gray-500"
-    }
-  }
+  )
 
   return (
-    <div className="flex justify-center items-center w-screen h-screen bg-white">
-      <div className="w-full max-w-4xl p-8 bg-white rounded-xl shadow-lg transition-all duration-300">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">
-            System Status
-          </h1>
-          <div className="flex items-center space-x-4">
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={handleRefresh}
-              className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors duration-200"
-            >
-              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </motion.button>
+    <div className="flex justify-center items-center min-h-screen bg-gray-100">
+      <Card className="w-full max-w-4xl p-6">
+        <CardHeader>
+          <CardTitle>System Status</CardTitle>
+          <CardDescription>Real-time monitoring of your services.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center mb-6">
+            <input
+              type="text"
+              placeholder="Search services..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <Switch
+              checked={isToggled}
+              onCheckedChange={() => setIsToggled(!isToggled)}
+              className="ml-4"
+            />
           </div>
-        </div>
-
-        <div className="relative mb-6">
-          <input
-            type="text"
-            placeholder="Search services..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-4 pl-12 rounded-full bg-gray-100 shadow-inner transition-all duration-300 focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-        </div>
-
-        <div className="space-y-6">
-          <AnimatePresence>
-            {filteredServices.map((service) => (
-              <motion.div
-                key={service.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-                className="bg-gray-50 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-200"
-              >
-                <div className="flex justify-between items-center mb-4">
+          <div className="space-y-4">
+            {filteredServices.map(service => (
+              <Card key={service.name} className="bg-white shadow-md">
+                <CardHeader className="flex justify-between items-center">
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-gray-200 rounded-full">
-                      {service.icon}
-                    </div>
-                    <h2 className="text-xl font-semibold text-gray-800">{service.name}</h2>
+                    {/* Dynamically assign icons based on service name or status */}
+                    {service.status === "Operational" ? <Globe className="w-5 h-5 text-green-500" /> : <Globe className="w-5 h-5 text-red-500" />}
+                    <CardTitle>{service.name}</CardTitle>
                   </div>
-                  <span className={`text-sm font-medium ${getStatusColor(service.status)}`}>
+                  <Badge variant={service.status === "Operational" ? "default" : "destructive"}>
                     {service.status}
-                  </span>
-                </div>
-                <div className="relative">
-                  <div className="flex space-x-px h-10 mb-1 overflow-hidden rounded-md">
-                    {service.uptimeHistory.map((day, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ height: 0 }}
-                        animate={{ height: "100%" }}
-                        transition={{ duration: 0.5, delay: index * 0.01 }}
-                        className={`w-1 ${day.isUp ? 'bg-green-500' : 'bg-red-500'} relative group`}
-                      >
-                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-                          {day.date}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                  <div className="absolute top-0 left-0 w-full h-full bg-gray-50 opacity-20 pointer-events-none"></div>
-                </div>
-                <div className="flex justify-between text-xs text-gray-500 mt-2">
-                  <span>90 days ago</span>
-                  <span className="text-center w-full">{service.uptime.toFixed(2)}% uptime</span>
-                  <span>Today</span>
-                </div>
-              </motion.div>
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  {/* Implement uptime history visualization using Recharts */}
+                  <ResponsiveContainer width="100%" height={100}>
+                    <BarChart data={service.uptimeHistory}>
+                      <XAxis dataKey="date" hide />
+                      <YAxis hide />
+                      <Tooltip />
+                      <Bar dataKey="isUp" fill={service.status === "Operational" ? "#4ade80" : "#f87171"} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+                <CardFooter>
+                  <span>{`${service.uptime.toFixed(2)}% uptime`}</span>
+                </CardFooter>
+              </Card>
             ))}
-          </AnimatePresence>
-        </div>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
