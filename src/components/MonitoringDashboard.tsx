@@ -153,7 +153,7 @@ export default function Component({ initialServices }: { initialServices: Servic
 
 export async function getServerSideProps() {
   try {
-    const backendApiUrl = process.env.BACKEND_API_URL || 'http://localhost:8080'
+    const backendApiUrl = process.env.BACKEND_API_URL
     const response = await fetch(`${backendApiUrl}/api/monitor`)
     const data = await response.json()
     const initialServices = data.map((item: { url: string; status: boolean; last_checked: string }) => ({
