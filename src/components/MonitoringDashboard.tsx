@@ -24,7 +24,7 @@ export default function Component({ initialServices }: { initialServices: Servic
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await fetch('http://localhost:8080/api/monitor') // Adjust the endpoint as needed
+        const response = await fetch(`${process.env.BACKEND_API_URL}/api/monitor`)
         const data = await response.json()
         const mappedServices = data.map((item: { url: string; status: boolean; last_checked: string }) => ({
           name: item.url,
