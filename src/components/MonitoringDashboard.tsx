@@ -2,38 +2,26 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Globe, Search, RefreshCw } from "lucide-react"
+import { Globe, Search, RefreshCw, AlertTriangle, CheckCircle, BarChart2 } from "lucide-react"
 
 interface Service {
-  name: string
-  icon: React.ReactNode
-  status: "Operational" | "Degraded" | "Down"
-  uptime: number
-  uptimeHistory: { date: string; isUp: boolean }[]
+  url: string
+  status: boolean
+  last_checked: string
+  uptime_percentage?: number  // New field for uptime percentage, made optional
 }
 
-export default function Component({ initialServices }: { initialServices: Service[] }) {
+const MonitoringDashboard: React.FC<{ initialServices?: Service[] }> = ({ initialServices = [] }) => {
   const [searchTerm, setSearchTerm] = useState("")
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [services, setServices] = useState<Service[]>(initialServices)
 
   useEffect(() => {
-    // Dark/light mode functionality removed
-  }, [])
-
-  useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await fetch('http://localhost:8080/api/monitor') // Adjust the endpoint as needed
+        const response = await fetch('/api/monitor')
         const data = await response.json()
-        const mappedServices = data.map((item: { url: string; status: boolean; last_checked: string }) => ({
-          name: item.url,
-          icon: <Globe className="w-5 h-5" />, // Use a generic icon for all services
-          status: item.status ? "Operational" : "Down",
-          uptime: item.status ? 100 : 0, // Simplified uptime calculation 
-          uptimeHistory: [{ date: item.last_checked, isUp: item.status }]
-        }))
-        setServices(mappedServices)
+        setServices(data)
       } catch (error) {
         console.error("Error fetching services:", error)
       }
@@ -41,13 +29,13 @@ export default function Component({ initialServices }: { initialServices: Servic
 
     fetchServices()
 
-    const intervalId = setInterval(fetchServices, 5000) // Fetch services every 5 seconds
+    const intervalId = setInterval(fetchServices, 5000)
 
-    return () => clearInterval(intervalId) // Cleanup interval on component unmount
+    return () => clearInterval(intervalId)
   }, [])
 
   const filteredServices = services?.filter((service) =>
-    service.name.toLowerCase().includes(searchTerm.toLowerCase())
+    service.url.toLowerCase().includes(searchTerm.toLowerCase())
   ) || []
 
   const handleRefresh = () => {
@@ -55,18 +43,21 @@ export default function Component({ initialServices }: { initialServices: Servic
     setTimeout(() => setIsRefreshing(false), 1000)
   }
 
-  const getStatusColor = (status: Service["status"]) => {
-    switch (status) {
-      case "Operational":
-        return "text-green-500"
-      case "Degraded":
-        return "text-yellow-500"
-      case "Down":
-        return "text-red-500"
-      default:
-        return "text-gray-500"
-    }
+  const getStatusIcon = (status: boolean) => {
+    return status ? (
+      <CheckCircle className="w-6 h-6 text-green-500" />
+    ) : (
+      <AlertTriangle className="w-6 h-6 text-red-500" />
+    )
   }
+
+  const getUptimeColor = (percentage: number) => {
+    if (percentage >= 99) return "text-green-500"
+    if (percentage >= 95) return "text-yellow-500"
+    return "text-red-500"
+  }
+
+  const allServicesUp = services.length > 0 && services.every(service => service.status)
 
   return (
     <div className="flex justify-center items-center w-screen h-screen bg-white">
@@ -80,10 +71,30 @@ export default function Component({ initialServices }: { initialServices: Servic
               whileTap={{ scale: 0.95 }}
               onClick={handleRefresh}
               className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors duration-200"
+              aria-label="Refresh status"
             >
               <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
             </motion.button>
           </div>
+        </div>
+
+        <div className="mb-6 p-4 rounded-lg bg-gray-50 flex items-center space-x-3">
+          {services.length > 0 ? (
+            allServicesUp ? (
+              <CheckCircle className="w-6 h-6 text-green-500" />
+            ) : (
+              <AlertTriangle className="w-6 h-6 text-yellow-500" />
+            )
+          ) : (
+            <RefreshCw className="w-6 h-6 text-gray-400" />
+          )}
+          <span className="text-lg font-medium">
+            {services.length > 0 ? (
+              allServicesUp ? "All services are running correctly" : "Some services are down"
+            ) : (
+              "Loading services status..."
+            )}
+          </span>
         </div>
 
         <div className="relative mb-6">
@@ -93,6 +104,7 @@ export default function Component({ initialServices }: { initialServices: Servic
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full p-4 pl-12 rounded-full bg-gray-100 shadow-inner transition-all duration-300 focus:ring-2 focus:ring-blue-500 outline-none"
+            aria-label="Search services"
           />
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
         </div>
@@ -101,7 +113,7 @@ export default function Component({ initialServices }: { initialServices: Servic
           <AnimatePresence>
             {filteredServices.map((service) => (
               <motion.div
-                key={service.name}
+                key={service.url}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -111,36 +123,22 @@ export default function Component({ initialServices }: { initialServices: Servic
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-gray-200 rounded-full">
-                      {service.icon}
+                      <Globe className="w-5 h-5" />
                     </div>
-                    <h2 className="text-xl font-semibold text-gray-800">{service.name}</h2>
+                    <h2 className="text-xl font-semibold text-gray-800">{service.url}</h2>
                   </div>
-                  <span className={`text-sm font-medium ${getStatusColor(service.status)}`}>
-                    {service.status}
-                  </span>
-                </div>
-                <div className="relative">
-                  <div className="flex space-x-px h-10 mb-1 overflow-hidden rounded-md">
-                    {service.uptimeHistory.map((day, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ height: 0 }}
-                        animate={{ height: "100%" }}
-                        transition={{ duration: 0.5, delay: index * 0.01 }}
-                        className={`w-1 ${day.isUp ? 'bg-green-500' : 'bg-red-500'} relative group`}
-                      >
-                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-                          {day.date}
-                        </div>
-                      </motion.div>
-                    ))}
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(service.status)}
+                    <span className={`text-sm font-medium ${service.status ? 'text-green-500' : 'text-red-500'}`}>
+                      {service.status ? "Operational" : "Down"}
+                    </span>
                   </div>
-                  <div className="absolute top-0 left-0 w-full h-full bg-gray-50 opacity-20 pointer-events-none"></div>
                 </div>
-                <div className="flex justify-between text-xs text-gray-500 mt-2">
-                  <span>90 days ago</span>
-                  <span className="text-center w-full">{service.uptime.toFixed(2)}% uptime</span>
-                  <span>Today</span>
+                <div className="text-sm text-gray-500 mb-2">
+                  Last checked: {new Date(service.last_checked).toLocaleString()}
+                </div>
+                <div className="text-sm font-medium">
+                  Uptime: {service.uptime_percentage !== undefined ? service.uptime_percentage.toFixed(2) : 'N/A'}%
                 </div>
               </motion.div>
             ))}
@@ -151,21 +149,4 @@ export default function Component({ initialServices }: { initialServices: Servic
   )
 }
 
-export async function getServerSideProps() {
-  try {
-    const backendApiUrl = process.env.BACKEND_API_URL
-    const response = await fetch(`${backendApiUrl}/api/monitor`)
-    const data = await response.json()
-    const initialServices = data.map((item: { url: string; status: boolean; last_checked: string }) => ({
-      name: item.url,
-      icon: <Globe className="w-5 h-5" />, // Use a generic icon for all services
-      status: item.status ? "Operational" : "Down",
-      uptime: item.status ? 100 : 0, // Simplified uptime calculation
-      uptimeHistory: [{ date: item.last_checked, isUp: item.status }]
-    }))
-    return { props: { initialServices } }
-  } catch (error) {
-    console.error("Error fetching services:", error)
-    return { props: { initialServices: [] } }
-  }
-}
+export default MonitoringDashboard;

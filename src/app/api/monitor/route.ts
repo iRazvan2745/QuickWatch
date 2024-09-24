@@ -1,19 +1,10 @@
 import { NextResponse } from 'next/server'
 
-const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:8080'
+const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://qwapi.irazz.lol';
 
 export async function GET() {
   try {
-    console.log('Backend API URL:', BACKEND_API_URL)
-    if (!BACKEND_API_URL) {
-      throw new Error('BACKEND_API_URL is not defined')
-    }
-    const response = await fetch(`${BACKEND_API_URL}/api/monitor`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-    console.log('Response status:', response.status)
+    const response = await fetch(`${BACKEND_API_URL}/api/monitor`)
     if (!response.ok) {
       return NextResponse.json({ error: 'Failed to fetch monitoring data' }, { status: response.status })
     }
