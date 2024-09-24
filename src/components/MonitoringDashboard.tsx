@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Globe, Search, RefreshCw, AlertTriangle, CheckCircle, BarChart2 } from "lucide-react"
+import { Globe, Search, RefreshCw, AlertTriangle, CheckCircle } from "lucide-react"
 
 interface Service {
   url: string
   status: boolean
+  status_code: number
+  response_time: number
   last_checked: string
-  uptime_percentage?: number  // New field for uptime percentage, made optional
+  uptime_percentage: number
 }
 
 const MonitoringDashboard: React.FC<{ initialServices?: Service[] }> = ({ initialServices = [] }) => {
@@ -21,6 +23,7 @@ const MonitoringDashboard: React.FC<{ initialServices?: Service[] }> = ({ initia
       try {
         const response = await fetch('/api/monitor')
         const data = await response.json()
+        console.log("Fetched data:", data)  // This will show the raw data from the API
         setServices(data)
       } catch (error) {
         console.error("Error fetching services:", error)
@@ -138,7 +141,9 @@ const MonitoringDashboard: React.FC<{ initialServices?: Service[] }> = ({ initia
                   Last checked: {new Date(service.last_checked).toLocaleString()}
                 </div>
                 <div className="text-sm font-medium">
-                  Uptime: {service.uptime_percentage !== undefined ? service.uptime_percentage.toFixed(2) : 'N/A'}%
+                  Uptime: {service.uptime_percentage !== undefined 
+                    ? `${service.uptime_percentage.toFixed(2)}%` 
+                    : 'N/A'}
                 </div>
               </motion.div>
             ))}
